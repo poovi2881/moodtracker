@@ -1,96 +1,60 @@
-# Install dependencies first:
-# pip install streamlit pandas matplotlib streamlit-extras
-
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-from streamlit_extras.let_it_rain import rain
+import os
+from dotenv import load_dotenv
 
-# --- App Config ---
-st.set_page_config(page_title="Office Mood Tracker", page_icon="😊", layout="centered")
+# Load environment variables
+load_dotenv()
+admin_password = os.getenv("ADMIN_PASSWORD")
 
-# --- App Title ---
-st.title("😊 Office Mood Tracker")
-st.markdown("### 🌟 Track the team's mood in real-time & boost engagement!")
+# Page config
+st.set_page_config(page_title="Your Streamlit App", layout="wide")
 
-# --- Mood Options ---
-mood_options = {
-    "😄 Happy": "Pastel1",
-    "😌 Calm": "Pastel2",
-    "😓 Stressed": "cool",
-    "🔥 On Fire": "autumn",
-    "💡 Productive": "summer",
-    "😴 Tired": "gray",
-    "🙌 Excited": "spring"
-}
+# Title
+st.title("Welcome to My Streamlit App 🚀")
 
-# --- User Input ---
-with st.form("mood_form", clear_on_submit=True):
-    name = st.text_input("👤 Enter your name:")
-    mood = st.radio("🎯 Select your mood for today:", list(mood_options.keys()))
-    submitted = st.form_submit_button("Submit Mood")
+# Load your data
+df = pd.read_csv("mood_tracker.csv")  # Use your actual file name
 
-if submitted:
-    if name:
-        df = pd.DataFrame([[name, mood]], columns=["Name", "Mood"])
-        try:
-            df_existing = pd.read_csv("mood_data.csv")
-            df = pd.concat([df_existing, df], ignore_index=True)
-        except FileNotFoundError:
-            pass
-        df.to_csv("mood_data.csv", index=False)
+# Function to check admin password
+def check_password():
+    def password_entered():
+        if st.session_state["password"] == admin_password:
+            st.session_state["password_correct"] = True
+            st.success("✅ Access granted to admin panel!")
+        else:
+            st.session_state["password_correct"] = False
+            st.error("😅 Incorrect password!")
 
-        # Confetti celebration!
-        rain(
-            emoji="🎉",
-            font_size=54,
-            falling_speed=5,
-            animation_length=2,
-        )
-        st.success(f"Thank you, {name}! Your mood '{mood}' has been recorded 🌟")
+    if "password_correct" not in st.session_state:
+        st.text_input("Enter admin password:", type="password", on_change=password_entered, key="password")
+        return False
+    elif not st.session_state["password_correct"]:
+        st.text_input("Enter admin password:", type="password", on_change=password_entered, key="password")
+        return False
     else:
-        st.error("Oops! Please enter your name before submitting.")
+        return True
 
-# --- Mood Summary ---
-st.markdown("---")
-st.header("📊 Team Mood Summary")
+# Main function
+def main():
+    st.write("This is your main app content here.")
+    # Add your main app functions here
 
-try:
-    df = pd.read_csv("mood_data.csv")
-    mood_counts = df['Mood'].value_counts()
+    # Admin mode trigger (only visible to you, Poorvi)
+    if st.checkbox("Admin Mode 🔒"):
+        if check_password():
+            st.subheader("Admin Panel 🛠️")
+            if st.button("Show Data"):
+                st.write(df)
 
-    # Pie Chart
-    fig, ax = plt.subplots()
-    mood_counts.plot.pie(
-        autopct='%1.1f%%',
-        startangle=90,
-        colors=plt.cm.Pastel1.colors,
-        ax=ax,
-        textprops={'fontsize': 10}
-    )
-    ax.set_ylabel('')
-    ax.set_title('Current Team Mood', fontsize=14)
-    st.pyplot(fig)
+            st.download_button(
+                label="Download Data as CSV",
+                data=df.to_csv(index=False).encode('utf-8'),
+                file_name='data_export.csv',
+                mime='text/csv'
+            )
 
-    # Data Table
-    with st.expander("🔍 View Raw Mood Data"):
-        st.dataframe(df, use_container_width=True)
+# Run the app
+if __name__ == '__main__':
+    main()
 
-    # Download Option
-    csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="⬇️ Download Mood Data",
-        data=csv,
-        file_name='team_mood_summary.csv',
-        mime='text/csv',
-    )
-
-except FileNotFoundError:
-    st.info("No mood data yet. Be the first to submit!")
-
-# --- Footer ---
-st.markdown("---")
-st.markdown(
-    "Made with ❤️ for team vibes by [Poorvi]. "
-    "Track, reflect, and brighten up the workday! 🌈"
-)
